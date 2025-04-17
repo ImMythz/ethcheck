@@ -24,21 +24,13 @@ export default function RootLayout({
         <meta name="google-adsense-account" content="ca-pub-9484338643096775" />
       </head>
       <body className={`${inter.className} bg-slate-900 text-white min-h-screen`}>
-        {/* Google AdSense Auto Ads Script */}
+        {/* Google AdSense Script - Fixed to remove data-nscript attribute issues */}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9484338643096775"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           crossOrigin="anonymous"
         />
-        <Script id="google-auto-ads" strategy="afterInteractive">
-          {`
-            (adsbygoogle = window.adsbygoogle || []).push({
-              google_ad_client: "ca-pub-9484338643096775",
-              enable_page_level_ads: true
-            });
-          `}
-        </Script>
 
         {children}
         <Toaster />

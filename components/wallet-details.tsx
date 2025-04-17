@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { Copy, ExternalLink, Clock, ArrowDownUp, BarChart } from "lucide-react"
+import { Copy, ExternalLink, Clock, ArrowDownUp, BarChart, ChevronUp, ChevronDown } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { formatEther, formatAddress, formatDate } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import type { TimePeriod } from "@/lib/ethereum-market"
+import { useMediaQuery } from "@/hooks/use-media-query"
 
 interface WalletDetailsProps {
   data: {
@@ -19,6 +21,9 @@ interface WalletDetailsProps {
 export function WalletDetails({ data }: WalletDetailsProps) {
   const [copied, setCopied] = useState(false)
   const { toast } = useToast()
+  const [sortDirection, setSortDirection] = useState<"desc" | "asc">("desc")
+  const [historyPeriod, setHistoryPeriod] = useState<TimePeriod>("1M")
+  const isMobile = useMediaQuery("(max-width: 768px)")
 
   const copyToClipboard = (text: string, label = "Address") => {
     navigator.clipboard.writeText(text)
@@ -60,6 +65,85 @@ export function WalletDetails({ data }: WalletDetailsProps) {
   }
 
   const chartData = processChartData()
+
+  // Get sorted transactions based on current sort direction
+  const getSortedTransactions = () => {
+    return [...data.transactions].sort((a, b) => {
+      if (sortDirection === "desc") {
+        return b.timestamp - a.timestamp // Latest first
+      } else {
+        return a.timestamp - b.timestamp // Oldest first
+      }
+    })
+  }
+
+  // Calculate date range for the transactions
+  const getDateRange = () => {
+    if (!data.transactions.length) return "No transactions"
+
+    const timestamps = data.transactions.map((tx) => tx.timestamp)
+    const oldestDate = new Date(Math.min(...timestamps))
+    const newestDate = new Date(Math.max(...timestamps))
+
+    return `${oldestDate.toLocaleDateString()} - ${newestDate.toLocaleDateString()}`
+  }
+
+  // Filter chart data based on selected period
+  const getFilteredChartData = () => {
+    if (!chartData.length) return []
+
+    const now = Date.now()
+    let cutoffTime: number
+
+    switch (historyPeriod) {
+      case "1D":
+        cutoffTime = now - 24 * 60 * 60 * 1000
+        break
+      case "5D":
+        cutoffTime = now - 5 * 24 * 60 * 60 * 1000
+        break
+      case "1M":
+        cutoffTime = now - 30 * 24 * 60 * 60 * 1000
+        break
+      case "6M":
+        cutoffTime = now - 180 * 24 * 60 * 60 * 1000
+        break
+      case "YTD":
+        const startOfYear = new Date(new Date().getFullYear(), 0, 1).getTime()
+        cutoffTime = startOfYear
+        break
+      case "1Y":
+        cutoffTime = now - 365 * 24 * 60 * 60 * 1000
+        break
+      case "5Y":
+        cutoffTime = now - 5 * 365 * 24 * 60 * 60 * 1000
+        break
+      case "Max":
+      default:
+        return chartData
+    }
+
+    let filtered = chartData.filter((point) => point.timestamp >= cutoffTime)
+
+    // Reduce data points for mobile view
+    if (isMobile && filtered.length > 20) {
+      const step = Math.ceil(filtered.length / 20)
+      filtered = filtered.filter((_, index) => index % step === 0)
+    }
+
+    return filtered
+  }
+
+  const filteredChartData = getFilteredChartData()
+
+  // Calculate totals for the filtered data
+  const getTotalIncoming = () => {
+    return filteredChartData.reduce((sum, tx) => sum + (tx.value > 0 ? tx.value : 0), 0).toFixed(4)
+  }
+
+  const getTotalOutgoing = () => {
+    return Math.abs(filteredChartData.reduce((sum, tx) => sum + (tx.value < 0 ? tx.value : 0), 0)).toFixed(4)
+  }
 
   return (
     <div className="mt-6 animate-in fade-in duration-500">
@@ -108,6 +192,27 @@ export function WalletDetails({ data }: WalletDetailsProps) {
         <TabsContent value="transactions" className="mt-4">
           {data.transactions.length > 0 ? (
             <div className="bg-slate-900/30 rounded-lg border border-slate-700/50 overflow-hidden">
+              <div className="flex items-center justify-between p-3 bg-slate-800/50 border-b border-slate-700/50">
+                <h3 className="text-sm font-medium text-slate-300">Transaction History</h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSortDirection(sortDirection === "desc" ? "asc" : "desc")}
+                  className="text-slate-400 hover:text-white"
+                >
+                  {sortDirection === "desc" ? (
+                    <div className="flex items-center">
+                      <span className="mr-1 text-xs">Newest first</span>
+                      <ChevronDown size={14} />
+                    </div>
+                  ) : (
+                    <div className="flex items-center">
+                      <span className="mr-1 text-xs">Oldest first</span>
+                      <ChevronUp size={14} />
+                    </div>
+                  )}
+                </Button>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -127,7 +232,7 @@ export function WalletDetails({ data }: WalletDetailsProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.transactions.map((tx) => (
+                    {getSortedTransactions().map((tx) => (
                       <tr key={tx.hash} className="border-b border-slate-700/30 hover:bg-slate-800/30">
                         <td className="px-2 sm:px-4 py-3 text-xs sm:text-sm">
                           <a
@@ -182,17 +287,32 @@ export function WalletDetails({ data }: WalletDetailsProps) {
 
         <TabsContent value="history" className="mt-4">
           <div className="bg-slate-900/30 rounded-lg border border-slate-700/50 p-4 sm:p-6">
-            <div className="mb-4">
-              <h3 className="text-lg font-medium text-slate-200 mb-2">Balance History</h3>
-              <p className="text-slate-400 text-sm">
-                This chart shows how your ETH balance has changed over time with deposits and withdrawals.
-              </p>
+            <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+              <div>
+                <h3 className="text-lg font-medium text-slate-200 mb-1">Balance History</h3>
+                <p className="text-slate-400 text-sm">This chart shows how your ETH balance has changed over time.</p>
+              </div>
+
+              <div className="mt-3 sm:mt-0">
+                <Tabs value={historyPeriod} onValueChange={(value) => setHistoryPeriod(value as TimePeriod)}>
+                  <TabsList className="bg-slate-900/50 border-slate-700 grid grid-cols-4 sm:grid-cols-8">
+                    <TabsTrigger value="1D">1D</TabsTrigger>
+                    <TabsTrigger value="5D">5D</TabsTrigger>
+                    <TabsTrigger value="1M">1M</TabsTrigger>
+                    <TabsTrigger value="6M">6M</TabsTrigger>
+                    <TabsTrigger value="YTD">YTD</TabsTrigger>
+                    <TabsTrigger value="1Y">1Y</TabsTrigger>
+                    <TabsTrigger value="5Y">5Y</TabsTrigger>
+                    <TabsTrigger value="Max">Max</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
             </div>
 
-            {chartData.length > 0 ? (
+            {filteredChartData.length > 0 ? (
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <AreaChart data={filteredChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
@@ -200,7 +320,22 @@ export function WalletDetails({ data }: WalletDetailsProps) {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="date" stroke="#94a3b8" tick={{ fill: "#94a3b8" }} />
+                    <XAxis
+                      dataKey="timestamp"
+                      tickFormatter={(timestamp) => {
+                        const date = new Date(timestamp)
+                        // Different format based on period
+                        if (historyPeriod === "1D" || historyPeriod === "5D") {
+                          return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                        } else if (historyPeriod === "1M" || historyPeriod === "6M") {
+                          return date.toLocaleDateString([], { month: "short", day: "numeric" })
+                        } else {
+                          return date.toLocaleDateString([], { month: "short", year: "2-digit" })
+                        }
+                      }}
+                      stroke="#94a3b8"
+                      tick={{ fill: "#94a3b8" }}
+                    />
                     <YAxis
                       stroke="#94a3b8"
                       tick={{ fill: "#94a3b8" }}
@@ -222,7 +357,7 @@ export function WalletDetails({ data }: WalletDetailsProps) {
                       itemStyle={{ color: "#f8fafc" }}
                       labelStyle={{ color: "#94a3b8" }}
                       formatter={(value: number) => [`${value.toFixed(4)} ETH`, "Balance"]}
-                      labelFormatter={(label) => `Date: ${label}`}
+                      labelFormatter={(label) => `Date: ${new Date(label).toLocaleString()}`}
                     />
                     <Area
                       type="monotone"
@@ -244,18 +379,17 @@ export function WalletDetails({ data }: WalletDetailsProps) {
               </div>
             )}
 
-            {chartData.length > 0 && (
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
-                  <div className="text-xs text-slate-400">Total Incoming</div>
-                  <div className="text-lg font-medium text-green-400">
-                    +{chartData.reduce((sum, tx) => sum + (tx.value > 0 ? tx.value : 0), 0).toFixed(4)} ETH
+            {filteredChartData.length > 0 && (
+              <div className="mt-6">
+                <div className="text-xs text-slate-400 mb-2">Date range: {getDateRange()}</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+                    <div className="text-xs text-slate-400">Total Incoming</div>
+                    <div className="text-lg font-medium text-green-400">+{getTotalIncoming()} ETH</div>
                   </div>
-                </div>
-                <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
-                  <div className="text-xs text-slate-400">Total Outgoing</div>
-                  <div className="text-lg font-medium text-red-400">
-                    -{Math.abs(chartData.reduce((sum, tx) => sum + (tx.value < 0 ? tx.value : 0), 0)).toFixed(4)} ETH
+                  <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+                    <div className="text-xs text-slate-400">Total Outgoing</div>
+                    <div className="text-lg font-medium text-red-400">-{getTotalOutgoing()} ETH</div>
                   </div>
                 </div>
               </div>

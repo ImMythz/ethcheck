@@ -3,22 +3,21 @@
 import { useEffect, useRef } from "react"
 
 interface GoogleAdProps {
-  slot?: string
+  slot: string
   format?: "auto" | "rectangle" | "horizontal" | "vertical"
   responsive?: boolean
   className?: string
 }
 
-export function GoogleAd({ slot = "5688063065", format = "auto", responsive = true, className = "" }: GoogleAdProps) {
+export function GoogleAd({ slot, format = "auto", responsive = true, className = "" }: GoogleAdProps) {
   const adRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     try {
       // Add the ad if the container exists and window.adsbygoogle is defined
-      if (adRef.current && typeof window !== "undefined") {
+      if (adRef.current && typeof window !== "undefined" && window.adsbygoogle) {
         // Push the ad to the adsense queue
-        // @ts-ignore
-        ;(window.adsbygoogle = window.adsbygoogle || []).push({})
+        window.adsbygoogle.push({})
       }
     } catch (error) {
       console.error("Error loading Google ad:", error)
@@ -38,4 +37,11 @@ export function GoogleAd({ slot = "5688063065", format = "auto", responsive = tr
       />
     </div>
   )
+}
+
+// Add this to make TypeScript happy
+declare global {
+  interface Window {
+    adsbygoogle: any[]
+  }
 }
