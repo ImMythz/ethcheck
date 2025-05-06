@@ -54,13 +54,14 @@ export default function EthConverter() {
                     className="flex-grow bg-slate-900/50 border border-slate-700 rounded-l-md p-2 text-white"
                     readOnly
                   />
-                  <select className="bg-slate-800 border border-slate-700 rounded-r-md p-2 text-white border-l-0">
+                  <select
+                    className="bg-slate-800 border border-slate-700 rounded-r-md p-2 text-white border-l-0"
+                    defaultValue="usd"
+                  >
                     <option value="eth">ETH</option>
                     <option value="gwei">Gwei</option>
                     <option value="wei">Wei</option>
-                    <option value="usd" selected>
-                      USD
-                    </option>
+                    <option value="usd">USD</option>
                   </select>
                 </div>
               </div>
