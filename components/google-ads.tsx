@@ -45,3 +45,5 @@ declare global {
     adsbygoogle: any[]
   }
 }
+
+export default GoogleAd

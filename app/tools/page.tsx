@@ -23,21 +23,21 @@ export default function Tools() {
       description: "Convert between ETH, Wei, Gwei, and USD with real-time price data.",
       icon: <ArrowLeftRight className="h-8 w-8 text-emerald-400" />,
       href: "/tools/eth-converter",
-      status: "Coming Soon",
+      status: "", // Removed Coming Soon
     },
     {
       title: "Token Explorer",
-      description: "Search and analyze ERC-20, ERC-721, and ERC-1155 tokens on the Ethereum blockchain.",
+      description: "Explore ERC-20 tokens on the Ethereum blockchain",
       icon: <Coins className="h-8 w-8 text-emerald-400" />,
       href: "/tools/token-explorer",
-      status: "Coming Soon",
+      status: "", // Removed Coming Soon
     },
     {
       title: "Transaction Decoder",
-      description: "Decode and understand complex Ethereum transactions and smart contract interactions.",
+      description: "Decode Ethereum transaction data",
       icon: <FileCode className="h-8 w-8 text-emerald-400" />,
       href: "/tools/transaction-decoder",
-      status: "Coming Soon",
+      status: "", // Removed Coming Soon
     },
   ]
 
