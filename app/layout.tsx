@@ -36,12 +36,11 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
 
-        {/* Simple Analytics - Privacy-first analytics */}
+        {/* Simple Analytics - Using the recommended implementation */}
         <Script
-          async
           src="https://scripts.simpleanalyticscdn.com/latest.js"
+          strategy="afterInteractive"
           data-collect-dnt="true"
-          strategy="lazyOnload"
         />
 
         <Header />
