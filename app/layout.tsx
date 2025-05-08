@@ -36,6 +36,14 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
 
+        {/* Simple Analytics - Privacy-first analytics */}
+        <Script
+          async
+          src="https://scripts.simpleanalyticscdn.com/latest.js"
+          data-collect-dnt="true"
+          strategy="lazyOnload"
+        />
+
         <Header />
 
         <main className="flex-grow">{children}</main>
